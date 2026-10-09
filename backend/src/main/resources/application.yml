@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: medistock-backend
+  profiles:
+    active: dev
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: UTC
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api/v1
+
+app:
+  jwt:
+    secret: 9a618248b64db62d15b300a07b0058fe073d715019f499b7528f4920c14151d7
+    expiration-ms: 86400000 # 24 hours
+  cors:
+    allowed-origins: "http://localhost:3000,http://localhost:5173"
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
