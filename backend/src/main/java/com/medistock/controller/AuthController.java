@@ -14,15 +14,21 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import com.medistock.dto.request.ForgotPasswordRequest;
+import com.medistock.dto.request.ResetPasswordRequest;
+import com.medistock.service.PasswordResetService;
+
 @RestController
 @RequestMapping("/auth")
 @Tag(name = "Authentication", description = "Endpoints for user login, registration, and tokens")
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, PasswordResetService passwordResetService) {
         this.authService = authService;
+        this.passwordResetService = passwordResetService;
     }
 
     @PostMapping({"/login", "/signin"})
@@ -47,5 +53,19 @@ public class AuthController {
         }
         UserResponse profile = authService.getCurrentUser(authentication.getName());
         return ResponseEntity.ok(ApiResponse.success("Profile fetched successfully", profile));
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Request password reset link")
+    public ResponseEntity<ApiResponse<String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        String message = passwordResetService.requestPasswordReset(request);
+        return ResponseEntity.ok(ApiResponse.success(message, null));
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Reset password using reset token")
+    public ResponseEntity<ApiResponse<String>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        String message = passwordResetService.resetPassword(request);
+        return ResponseEntity.ok(ApiResponse.success(message, null));
     }
 }

@@ -78,6 +78,8 @@ public class SecurityConfig {
                             "/auth/signin",
                             "/auth/register",
                             "/auth/signup",
+                            "/auth/forgot-password",
+                            "/auth/reset-password",
                             "/v3/api-docs/**",
                             "/swagger-ui/**",
                             "/swagger-ui.html"

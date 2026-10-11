@@ -54,6 +54,7 @@ class SchemaValidationIntegrationTest {
             assertTrue(tables.contains("expiry_tracking"), "Missing expiry_tracking table");
             assertTrue(tables.contains("notifications"), "Missing notifications table");
             assertTrue(tables.contains("reports"), "Missing reports table");
+            assertTrue(tables.contains("password_reset_tokens"), "Missing password_reset_tokens table");
         }
     }
 }

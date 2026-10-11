@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Users, UserPlus, Shield, ShieldCheck, Mail, Building, Key, AlertCircle, CheckCircle2, Search } from 'lucide-react';
+import { Users, UserPlus, Shield, ShieldCheck, Mail, Building, Key, AlertCircle, CheckCircle2, Search, Loader2 } from 'lucide-react';
 import api from '../../services/api';
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -33,39 +36,104 @@ export default function UserManagement() {
     }
   };
 
+  const fetchSuppliers = async () => {
+    try {
+      const res = await api.get('/suppliers');
+      const list = res?.data || res || [];
+      setSuppliers(Array.isArray(list) ? list : []);
+    } catch (err) {
+      console.warn('Suppliers could not be loaded for user creation dropdown:', err);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchSuppliers();
   }, []);
+
+  const openAddModal = () => {
+    setFormData({
+      name: '',
+      username: '',
+      email: '',
+      password: '',
+      role: 'STAFF',
+      supplierId: '',
+    });
+    setFieldErrors({});
+    setError('');
+    setShowAddModal(true);
+    fetchSuppliers();
+  };
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setFieldErrors({});
+
+    // Client-side validations
+    const errors = {};
+    if (!formData.name.trim()) errors.name = 'Full name is required';
+    if (!formData.username.trim()) {
+      errors.username = 'Username is required';
+    } else if (formData.username.trim().length < 3) {
+      errors.username = 'Username must be at least 3 characters';
+    }
+
+    if (!formData.email.trim()) {
+      errors.email = 'Email address is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      errors.email = 'Invalid email address format';
+    }
+
+    if (!formData.password) {
+      errors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+    }
+
+    if (formData.role === 'SUPPLIER' && !formData.supplierId) {
+      errors.supplierId = 'Please select a supplier partner for this account';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    setSubmitting(true);
     try {
       const payload = {
-        name: formData.name.trim() || formData.username.trim(),
+        name: formData.name.trim(),
         username: formData.username.trim(),
-        email: formData.email.trim(),
+        email: formData.email.trim().toLowerCase(),
         password: formData.password,
         role: formData.role,
         supplierId: formData.role === 'SUPPLIER' && formData.supplierId ? parseInt(formData.supplierId, 10) : null,
       };
 
       await api.post('/users', payload);
-      setSuccess(`User "${formData.username}" created successfully with role ${formData.role}!`);
+      setSuccess(`User "${formData.username.trim()}" created successfully with role ${formData.role}!`);
       setShowAddModal(false);
       setFormData({ name: '', username: '', email: '', password: '', role: 'STAFF', supplierId: '' });
       fetchUsers();
-      setTimeout(() => setSuccess(''), 4000);
+      setTimeout(() => setSuccess(''), 5000);
     } catch (err) {
+      if (err?.data && typeof err.data === 'object') {
+        setFieldErrors(err.data);
+      }
       const errMsg = err?.message || (typeof err === 'string' ? err : 'Failed to create user. Please ensure username/email are unique.');
       setError(errMsg);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const filteredUsers = users.filter((u) =>
     (u.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (u.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (u.role || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -79,7 +147,7 @@ export default function UserManagement() {
           </p>
         </div>
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={openAddModal}
           className="flex items-center space-x-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors shadow-sm self-start"
         >
           <UserPlus className="w-4 h-4" />
@@ -87,7 +155,7 @@ export default function UserManagement() {
         </button>
       </div>
 
-      {error && (
+      {error && !showAddModal && (
         <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl flex items-center space-x-2">
           <AlertCircle className="w-5 h-5 shrink-0" />
           <span>{error}</span>
@@ -108,7 +176,7 @@ export default function UserManagement() {
             <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by username, email, or role..."
+              placeholder="Search by name, username, email, or role..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 outline-none"
@@ -131,7 +199,7 @@ export default function UserManagement() {
                   <th className="px-6 py-3">User</th>
                   <th className="px-6 py-3">Role</th>
                   <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3">Linked Supplier ID</th>
+                  <th className="px-6 py-3">Linked Supplier</th>
                   <th className="px-6 py-3">Created Date</th>
                 </tr>
               </thead>
@@ -139,8 +207,8 @@ export default function UserManagement() {
                 {filteredUsers.map((u) => (
                   <tr key={u.id} className="hover:bg-slate-50">
                     <td className="px-6 py-4">
-                      <div className="font-semibold text-slate-800">{u.username}</div>
-                      <div className="text-xs text-slate-400">{u.email}</div>
+                      <div className="font-semibold text-slate-800">{u.name || u.username}</div>
+                      <div className="text-xs text-slate-500">@{u.username} • {u.email}</div>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${
@@ -157,8 +225,14 @@ export default function UserManagement() {
                         {u.status || 'ACTIVE'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-slate-600 font-mono text-xs">
-                      {u.supplierId ? `#${u.supplierId}` : '—'}
+                    <td className="px-6 py-4 text-slate-600 text-xs">
+                      {u.supplierName ? (
+                        <span className="font-medium text-slate-700">{u.supplierName} (#{u.supplierId})</span>
+                      ) : u.supplierId ? (
+                        <span className="font-mono text-slate-500">ID #{u.supplierId}</span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-slate-500 text-xs">
                       {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'}
@@ -181,6 +255,7 @@ export default function UserManagement() {
                 <h3 className="font-semibold text-base">Create Application Account</h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
                 className="text-slate-400 hover:text-white text-sm"
               >
@@ -189,84 +264,162 @@ export default function UserManagement() {
             </div>
 
             <form onSubmit={handleCreateUser} className="p-6 space-y-4">
+              {error && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg flex items-center space-x-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {/* Full Name */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Full Name</label>
+                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">
+                  Full Name <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 outline-none"
-                  placeholder="e.g. John Doe"
+                  onChange={(e) => {
+                    setFormData({ ...formData, name: e.target.value });
+                    setFieldErrors({ ...fieldErrors, name: '' });
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg text-sm outline-none ${
+                    fieldErrors.name ? 'border-rose-400 focus:ring-2 focus:ring-rose-500' : 'border-slate-200 focus:ring-2 focus:ring-cyan-500'
+                  }`}
+                  placeholder="e.g. Dr. Jane Smith"
                 />
+                {fieldErrors.name && (
+                  <p className="text-xs text-rose-600 mt-1">{fieldErrors.name}</p>
+                )}
               </div>
 
+              {/* Username */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Username</label>
+                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">
+                  Username <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
                   value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 outline-none"
-                  placeholder="e.g. john_doe"
+                  onChange={(e) => {
+                    setFormData({ ...formData, username: e.target.value });
+                    setFieldErrors({ ...fieldErrors, username: '' });
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg text-sm outline-none ${
+                    fieldErrors.username ? 'border-rose-400 focus:ring-2 focus:ring-rose-500' : 'border-slate-200 focus:ring-2 focus:ring-cyan-500'
+                  }`}
+                  placeholder="e.g. janesmith"
                 />
+                {fieldErrors.username && (
+                  <p className="text-xs text-rose-600 mt-1">{fieldErrors.username}</p>
+                )}
               </div>
 
+              {/* Email */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Email</label>
+                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">
+                  Email Address <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="email"
                   required
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 outline-none"
-                  placeholder="e.g. user@medistock.com"
+                  onChange={(e) => {
+                    setFormData({ ...formData, email: e.target.value });
+                    setFieldErrors({ ...fieldErrors, email: '' });
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg text-sm outline-none ${
+                    fieldErrors.email ? 'border-rose-400 focus:ring-2 focus:ring-rose-500' : 'border-slate-200 focus:ring-2 focus:ring-cyan-500'
+                  }`}
+                  placeholder="e.g. janesmith@medistock.com"
                 />
+                {fieldErrors.email && (
+                  <p className="text-xs text-rose-600 mt-1">{fieldErrors.email}</p>
+                )}
               </div>
 
+              {/* Password */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Temporary Password</label>
+                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">
+                  Initial Password <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="password"
                   required
                   minLength={6}
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 outline-none"
-                  placeholder="Min 6 characters"
+                  onChange={(e) => {
+                    setFormData({ ...formData, password: e.target.value });
+                    setFieldErrors({ ...fieldErrors, password: '' });
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg text-sm outline-none ${
+                    fieldErrors.password ? 'border-rose-400 focus:ring-2 focus:ring-rose-500' : 'border-slate-200 focus:ring-2 focus:ring-cyan-500'
+                  }`}
+                  placeholder="Minimum 6 characters"
                 />
+                {fieldErrors.password && (
+                  <p className="text-xs text-rose-600 mt-1">{fieldErrors.password}</p>
+                )}
               </div>
 
+              {/* Role */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Assigned Role</label>
+                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">
+                  Assigned Privilege Role <span className="text-rose-500">*</span>
+                </label>
                 <select
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, role: e.target.value });
+                    setFieldErrors({ ...fieldErrors, role: '', supplierId: '' });
+                  }}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 outline-none bg-white"
                 >
-                  <option value="STAFF">STAFF (Operational view)</option>
-                  <option value="PHARMACIST">PHARMACIST (Inventory & Expiry)</option>
-                  <option value="ADMIN">ADMIN (Full administrative access)</option>
-                  <option value="SUPPLIER">SUPPLIER (External partner)</option>
+                  <option value="STAFF">STAFF (Inventory operational view)</option>
+                  <option value="PHARMACIST">PHARMACIST (Medicine, Expiry & Orders)</option>
+                  <option value="ADMIN">ADMIN (Full platform administrative privileges)</option>
+                  <option value="SUPPLIER">SUPPLIER (External partner portal)</option>
                 </select>
               </div>
 
+              {/* Supplier Dropdown Selector */}
               {formData.role === 'SUPPLIER' && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">
-                    Linked Supplier ID
+                    Linked Supplier Organization <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="number"
-                    required
-                    value={formData.supplierId}
-                    onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 outline-none"
-                    placeholder="e.g. 1"
-                  />
+                  {suppliers.length === 0 ? (
+                    <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg">
+                      No suppliers registered in MediStock yet. Please create a supplier in the <strong>Suppliers</strong> tab first.
+                    </div>
+                  ) : (
+                    <select
+                      id="supplier-select"
+                      required
+                      value={formData.supplierId}
+                      onChange={(e) => {
+                        setFormData({ ...formData, supplierId: e.target.value });
+                        setFieldErrors({ ...fieldErrors, supplierId: '' });
+                      }}
+                      className={`w-full px-3 py-2 border rounded-lg text-sm outline-none bg-white ${
+                        fieldErrors.supplierId ? 'border-rose-400 focus:ring-2 focus:ring-rose-500' : 'border-slate-200 focus:ring-2 focus:ring-cyan-500'
+                      }`}
+                    >
+                      <option value="">Select a registered supplier partner</option>
+                      {suppliers.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} (ID #{s.id})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {fieldErrors.supplierId && (
+                    <p className="text-xs text-rose-600 mt-1">{fieldErrors.supplierId}</p>
+                  )}
                   <p className="text-[11px] text-slate-400 mt-1">
-                    Must correspond to an existing record in the Suppliers table.
+                    Supplier users can only access purchase orders assigned to their selected supplier organization.
                   </p>
                 </div>
               )}
@@ -281,9 +434,11 @@ export default function UserManagement() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-sm font-medium transition-colors"
+                  disabled={submitting || (formData.role === 'SUPPLIER' && suppliers.length === 0)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                 >
-                  Create User
+                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span>{submitting ? 'Creating Account...' : 'Create Account'}</span>
                 </button>
               </div>
             </form>

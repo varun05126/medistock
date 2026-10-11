@@ -6,6 +6,7 @@ import com.medistock.entity.Role;
 import com.medistock.entity.Supplier;
 import com.medistock.entity.User;
 import com.medistock.exception.BadRequestException;
+import com.medistock.exception.ConflictException;
 import com.medistock.exception.ResourceNotFoundException;
 import com.medistock.repository.RoleRepository;
 import com.medistock.repository.SupplierRepository;
@@ -50,23 +51,29 @@ public class UserService {
         }
 
         if (userRepository.existsByUsername(username)) {
-            throw new BadRequestException("Username already exists: " + username);
+            throw new ConflictException("Username already exists: " + username);
         }
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("Email already exists: " + request.getEmail());
+            throw new ConflictException("Email already exists: " + request.getEmail());
         }
 
-        String roleName = request.getRole() != null ? request.getRole().toUpperCase().replace("ROLE_", "") : "STAFF";
+        String rawRole = request.getRole() != null ? request.getRole().trim().toUpperCase() : "STAFF";
+        String roleName = rawRole.replace("ROLE_", "");
+        if (!java.util.List.of("ADMIN", "PHARMACIST", "STAFF", "SUPPLIER").contains(roleName)) {
+            throw new BadRequestException("Invalid role: " + rawRole + ". Allowed roles are ADMIN, PHARMACIST, STAFF, SUPPLIER.");
+        }
+
         Role role = roleRepository.findByName(roleName)
-                .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + roleName));
+                .or(() -> roleRepository.findByName("ROLE_" + roleName))
+                .orElseGet(() -> roleRepository.save(new Role(null, roleName)));
 
         Supplier supplier = null;
         if (roleName.equals("SUPPLIER")) {
             if (request.getSupplierId() == null) {
-                throw new BadRequestException("Supplier account must be linked to a supplier ID");
+                throw new BadRequestException("Supplier account must be linked to an existing supplier.");
             }
             supplier = supplierRepository.findById(request.getSupplierId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Supplier not found: " + request.getSupplierId()));
+                    .orElseThrow(() -> new ResourceNotFoundException("Supplier not found with ID: " + request.getSupplierId()));
         }
 
         String name = request.getName();

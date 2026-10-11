@@ -14,6 +14,8 @@ import UserManagement from './pages/admin/UserManagement';
 import SupplierPortal from './pages/supplier/SupplierPortal';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import Unauthorized from './pages/common/Unauthorized';
 import NotFound from './pages/common/NotFound';
 
@@ -39,6 +41,8 @@ export default function App() {
           {/* Public Authentication Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
 
           {/* Internal Dashboard & Analytics (Admin, Pharmacist, Staff) */}
