@@ -14,7 +14,8 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   flyway:
     enabled: ${SPRING_FLYWAY_ENABLED:true}
-    baseline-on-migrate: true
+    baseline-on-migrate: ${SPRING_FLYWAY_BASELINE_ON_MIGRATE:true}
+    baseline-version: ${SPRING_FLYWAY_BASELINE_VERSION:0}
     locations: classpath:db/migration
 
 server:
