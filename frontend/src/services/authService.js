@@ -27,11 +27,12 @@ const safeStorage = {
 export const authService = {
   login: async (credentials) => {
     const res = await api.post('/auth/login', credentials);
-    if (res.data?.token) {
-      safeStorage.setItem('token', res.data.token);
-      safeStorage.setItem('user', JSON.stringify(res.data));
+    const authData = res?.data?.token ? res.data : (res?.token ? res : res?.data);
+    if (authData?.token) {
+      safeStorage.setItem('token', authData.token);
+      safeStorage.setItem('user', JSON.stringify(authData));
     }
-    return res.data;
+    return authData;
   },
 
   register: async (userData) => {
