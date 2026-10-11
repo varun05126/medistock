@@ -1,0 +1,13 @@
+# Root .dockerignore
+.git
+.github
+.gitignore
+.dockerignore
+.DS_Store
+*.log
+backend/target
+frontend/node_modules
+frontend/dist
+.gemini
+docs
+README.md
