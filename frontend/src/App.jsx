@@ -123,11 +123,11 @@ export default function App() {
             }
           />
 
-          {/* Supplier Isolated Portal (Supplier Only) */}
+          {/* Supplier Isolated Portal (Supplier & Admin) */}
           <Route
             path="/supplier/portal"
             element={
-              <ProtectedRoute allowedRoles={['SUPPLIER']}>
+              <ProtectedRoute allowedRoles={['SUPPLIER', 'ADMIN']}>
                 <Layout>
                   <SupplierPortal />
                 </Layout>
@@ -137,7 +137,7 @@ export default function App() {
           <Route
             path="/supplier/orders"
             element={
-              <ProtectedRoute allowedRoles={['SUPPLIER']}>
+              <ProtectedRoute allowedRoles={['SUPPLIER', 'ADMIN']}>
                 <Layout>
                   <SupplierPortal />
                 </Layout>

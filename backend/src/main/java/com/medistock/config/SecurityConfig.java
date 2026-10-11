@@ -83,12 +83,12 @@ public class SecurityConfig {
                             "/swagger-ui.html"
                     ).permitAll()
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                    // Supplier isolation endpoints
-                    .requestMatchers("/suppliers/me", "/suppliers/me/**").hasRole("SUPPLIER")
+                    // Supplier endpoints (accessible to Supplier and Admin)
+                    .requestMatchers("/suppliers/me", "/suppliers/me/**").hasAnyRole("SUPPLIER", "ADMIN")
                     // Admin only endpoints
                     .requestMatchers("/users", "/users/**", "/admin/**").hasRole("ADMIN")
-                    // Pharmacist and Admin inventory management
-                    .requestMatchers("/inventory/**", "/medicines/**").hasAnyRole("ADMIN", "PHARMACIST", "STAFF")
+                    // Inventory, medicines, stock and category management
+                    .requestMatchers("/inventory/**", "/medicines/**", "/stock/**", "/categories", "/categories/**").hasAnyRole("ADMIN", "PHARMACIST", "STAFF")
                     .requestMatchers("/suppliers/**").hasAnyRole("ADMIN", "PHARMACIST")
                     .requestMatchers("/orders/**").hasAnyRole("ADMIN", "PHARMACIST")
                     .requestMatchers("/reports/**").hasAnyRole("ADMIN", "PHARMACIST")

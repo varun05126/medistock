@@ -69,6 +69,7 @@ export default function Sidebar() {
     { name: 'Suppliers', path: '/suppliers', icon: Truck, roles: ['ADMIN', 'PHARMACIST'] },
     { name: 'Purchase Orders', path: '/orders', icon: ShoppingCart, roles: ['ADMIN', 'PHARMACIST'] },
     { name: 'User Management', path: '/users', icon: Users, roles: ['ADMIN'] },
+    { name: 'Supplier Portal', path: '/supplier/portal', icon: PackageCheck, roles: ['ADMIN'] },
   ];
 
   const visibleItems = navItems.filter((item) => item.roles.some((r) => hasRole(r)));

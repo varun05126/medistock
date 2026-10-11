@@ -25,8 +25,9 @@ export default function ProtectedRoute({ allowedRoles, children }) {
     return <Navigate to="/supplier/portal" replace />;
   }
 
-  // Non-supplier attempting to access supplier-only routes -> 403
-  if (!isSupplier && location.pathname.startsWith('/supplier')) {
+  // Non-supplier attempting to access supplier-only routes -> 403 (allow ADMIN)
+  const isAdmin = hasRole('ADMIN');
+  if (!isSupplier && !isAdmin && location.pathname.startsWith('/supplier')) {
     return <Navigate to="/unauthorized" replace />;
   }
 

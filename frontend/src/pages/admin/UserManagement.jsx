@@ -11,6 +11,7 @@ export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState('');
 
   const [formData, setFormData] = useState({
+    name: '',
     username: '',
     email: '',
     password: '',
@@ -42,8 +43,9 @@ export default function UserManagement() {
     setSuccess('');
     try {
       const payload = {
-        username: formData.username,
-        email: formData.email,
+        name: formData.name.trim() || formData.username.trim(),
+        username: formData.username.trim(),
+        email: formData.email.trim(),
         password: formData.password,
         role: formData.role,
         supplierId: formData.role === 'SUPPLIER' && formData.supplierId ? parseInt(formData.supplierId, 10) : null,
@@ -52,11 +54,12 @@ export default function UserManagement() {
       await api.post('/users', payload);
       setSuccess(`User "${formData.username}" created successfully with role ${formData.role}!`);
       setShowAddModal(false);
-      setFormData({ username: '', email: '', password: '', role: 'STAFF', supplierId: '' });
+      setFormData({ name: '', username: '', email: '', password: '', role: 'STAFF', supplierId: '' });
       fetchUsers();
       setTimeout(() => setSuccess(''), 4000);
     } catch (err) {
-      setError(err?.message || 'Failed to create user. Please ensure username/email are unique.');
+      const errMsg = err?.message || (typeof err === 'string' ? err : 'Failed to create user. Please ensure username/email are unique.');
+      setError(errMsg);
     }
   };
 
@@ -186,6 +189,18 @@ export default function UserManagement() {
             </div>
 
             <form onSubmit={handleCreateUser} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 outline-none"
+                  placeholder="e.g. John Doe"
+                />
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Username</label>
                 <input

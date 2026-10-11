@@ -69,8 +69,13 @@ public class UserService {
                     .orElseThrow(() -> new ResourceNotFoundException("Supplier not found: " + request.getSupplierId()));
         }
 
+        String name = request.getName();
+        if (name == null || name.trim().isEmpty()) {
+            name = username;
+        }
+
         User user = User.builder()
-                .name(request.getName())
+                .name(name.trim())
                 .username(username)
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
