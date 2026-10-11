@@ -9,6 +9,7 @@ services:
   # ---------------------------------------------------------------------------
   - type: web
     name: medistock-backend
+    env: java
     runtime: java
     rootDir: backend
     plan: free
@@ -38,6 +39,7 @@ services:
   # ---------------------------------------------------------------------------
   - type: web
     name: medistock-frontend
+    env: static
     runtime: static
     rootDir: frontend
     buildCommand: npm install && npm run build
