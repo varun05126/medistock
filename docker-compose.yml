@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # Primary Database (PostgreSQL)
+  postgres:
+    image: postgres:15-alpine
+    container_name: medistock-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: medistock_db
+      POSTGRES_USER: medistock_user
+      POSTGRES_PASSWORD: medistock_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/main/resources/db/migration/V1__init_schema.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - medistock-network
+
+  # Backend Service (Spring Boot)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: medistock-backend
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/medistock_db
+      SPRING_DATASOURCE_USERNAME: medistock_user
+      SPRING_DATASOURCE_PASSWORD: medistock_password
+      JWT_SECRET: 9a618248b64db62d15b300a07b0058fe073d715019f499b7528f4920c14151d7
+      JWT_EXPIRATION_MS: 86400000
+    ports:
+      - "8080:8080"
+    networks:
+      - medistock-network
+
+  # Frontend Service (React + Vite + Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: medistock-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks:
+      - medistock-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  medistock-network:
+    driver: bridge
