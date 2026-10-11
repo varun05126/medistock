@@ -4,8 +4,6 @@
 -- Compatible with PostgreSQL 14+ / Supabase / Neon / AWS RDS PostgreSQL
 -- =============================================================================
 
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 -- 1. Roles Table
 CREATE TABLE IF NOT EXISTS roles (
     id BIGSERIAL PRIMARY KEY,
@@ -156,3 +154,10 @@ CREATE TABLE IF NOT EXISTS reports (
 );
 
 CREATE INDEX IF NOT EXISTS idx_reports_user_id ON reports(generated_by);
+
+-- 13. Seed Core System Roles
+INSERT INTO roles (name) VALUES ('ADMIN'), ('PHARMACIST'), ('STAFF'), ('SUPPLIER')
+ON CONFLICT (name) DO NOTHING;
+INSERT INTO roles (name) VALUES ('ROLE_ADMIN'), ('ROLE_PHARMACIST'), ('ROLE_STAFF'), ('ROLE_SUPPLIER')
+ON CONFLICT (name) DO NOTHING;
+

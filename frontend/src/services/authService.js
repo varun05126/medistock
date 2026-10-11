@@ -37,7 +37,7 @@ export const authService = {
 
   register: async (userData) => {
     const res = await api.post('/auth/register', userData);
-    return res.data;
+    return res;
   },
 
   getCurrentUser: () => {

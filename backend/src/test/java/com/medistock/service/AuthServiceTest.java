@@ -8,6 +8,7 @@ import com.medistock.dto.response.JwtResponse;
 import com.medistock.entity.Role;
 import com.medistock.entity.User;
 import com.medistock.exception.BadRequestException;
+import com.medistock.exception.ConflictException;
 import com.medistock.repository.RoleRepository;
 import com.medistock.repository.SupplierRepository;
 import com.medistock.repository.UserRepository;
@@ -117,13 +118,51 @@ class AuthServiceTest {
     @DisplayName("Public registration cannot grant Admin role")
     void testRegisterAdminRejected() {
         SignupRequest request = new SignupRequest("New Admin", "newadmin", "newadmin@medistock.com", "pass123", "ADMIN", null);
+        BadRequestException ex = assertThrows(BadRequestException.class, () -> authService.registerUser(request));
+        assertEquals("Public registration cannot assign Admin privileges.", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("Registration rejects missing name or empty required fields")
+    void testRegisterMissingRequiredFields() {
+        SignupRequest request = new SignupRequest("", "validuser", "valid@medistock.com", "pass123", "STAFF", null);
         assertThrows(BadRequestException.class, () -> authService.registerUser(request));
+    }
+
+    @Test
+    @DisplayName("Registration rejects invalid email format")
+    void testRegisterInvalidEmail() {
+        SignupRequest request = new SignupRequest("Jane Doe", "janedoe", "not-an-email", "pass123", "STAFF", null);
+        assertThrows(BadRequestException.class, () -> authService.registerUser(request));
+    }
+
+    @Test
+    @DisplayName("Registration rejects duplicate username with ConflictException")
+    void testRegisterDuplicateUsername() {
+        SignupRequest request = new SignupRequest("John Doe", "existinguser", "john@medistock.com", "pass123", "STAFF", null);
+        when(userRepository.existsByUsername("existinguser")).thenReturn(true);
+
+        ConflictException ex = assertThrows(ConflictException.class, () -> authService.registerUser(request));
+        assertTrue(ex.getMessage().contains("Username is already taken"));
+    }
+
+    @Test
+    @DisplayName("Registration rejects duplicate email with ConflictException")
+    void testRegisterDuplicateEmail() {
+        SignupRequest request = new SignupRequest("John Doe", "newuser", "existing@medistock.com", "pass123", "STAFF", null);
+        when(userRepository.existsByUsername("newuser")).thenReturn(false);
+        when(userRepository.existsByEmail("existing@medistock.com")).thenReturn(true);
+
+        ConflictException ex = assertThrows(ConflictException.class, () -> authService.registerUser(request));
+        assertTrue(ex.getMessage().contains("Email is already in use"));
     }
 
     @Test
     @DisplayName("Supplier registration requires valid supplier ID")
     void testRegisterSupplierRequiresSupplierId() {
         SignupRequest request = new SignupRequest("Supplier Rep", "sup1", "sup1@medistock.com", "pass123", "SUPPLIER", null);
+        when(userRepository.existsByUsername("sup1")).thenReturn(false);
+        when(userRepository.existsByEmail("sup1@medistock.com")).thenReturn(false);
         when(roleRepository.findByName("SUPPLIER")).thenReturn(Optional.of(new Role(4L, "SUPPLIER")));
 
         assertThrows(BadRequestException.class, () -> authService.registerUser(request));

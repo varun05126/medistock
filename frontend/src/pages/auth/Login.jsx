@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
-import { Lock, User, Activity, AlertCircle, ShieldCheck } from 'lucide-react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { Lock, User, Activity, AlertCircle, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
 export default function Login() {
+  const location = useLocation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('');
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState(location.state?.successMessage || '');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -111,6 +113,13 @@ export default function Login() {
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="p-8 space-y-5">
+          {successMessage && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs rounded-lg flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>{successMessage}</span>
+            </div>
+          )}
+
           {error && (
             <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg flex items-center space-x-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -186,10 +195,10 @@ export default function Login() {
           </button>
 
           {/* Registration Link */}
-          <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-            <span>Don't have an account?</span>
+          <div className="text-center text-xs text-slate-500 pt-3 border-t border-slate-100">
+            <span>Don't have an account? </span>
             <Link to="/register" className="text-cyan-600 font-semibold hover:underline">
-              Create Account
+              Create here
             </Link>
           </div>
         </form>

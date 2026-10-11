@@ -9,6 +9,7 @@ import com.medistock.dto.response.UserResponse;
 import com.medistock.entity.Role;
 import com.medistock.entity.Supplier;
 import com.medistock.entity.User;
+import com.medistock.exception.ConflictException;
 import com.medistock.exception.BadRequestException;
 import com.medistock.exception.ResourceNotFoundException;
 import com.medistock.repository.RoleRepository;
@@ -95,20 +96,43 @@ public class AuthService {
 
     @Transactional
     public String registerUser(SignupRequest signUpRequest) {
+        if (signUpRequest == null) {
+            throw new BadRequestException("Registration details must not be null.");
+        }
+
+        if (signUpRequest.getName() == null || signUpRequest.getName().trim().isEmpty()) {
+            throw new BadRequestException("Full name is required.");
+        }
+
+        if (signUpRequest.getEmail() == null || signUpRequest.getEmail().trim().isEmpty()) {
+            throw new BadRequestException("Email is required.");
+        }
+
+        String email = signUpRequest.getEmail().trim().toLowerCase();
+        if (!email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+            throw new BadRequestException("Invalid email format: " + signUpRequest.getEmail());
+        }
+
         String username = signUpRequest.getUsername();
         if (username == null || username.trim().isEmpty()) {
-            username = signUpRequest.getEmail().split("@")[0];
+            username = email.split("@")[0];
+        } else {
+            username = username.trim();
+        }
+
+        if (signUpRequest.getPassword() == null || signUpRequest.getPassword().trim().length() < 6) {
+            throw new BadRequestException("Password must be at least 6 characters.");
         }
 
         if (userRepository.existsByUsername(username)) {
-            throw new BadRequestException("Username is already taken: " + username);
+            throw new ConflictException("Username is already taken: " + username);
         }
 
-        if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-            throw new BadRequestException("Email is already in use: " + signUpRequest.getEmail());
+        if (userRepository.existsByEmail(email)) {
+            throw new ConflictException("Email is already in use: " + email);
         }
 
-        String requestedRole = signUpRequest.getRole() != null ? signUpRequest.getRole().toUpperCase().replace("ROLE_", "") : "STAFF";
+        String requestedRole = signUpRequest.getRole() != null ? signUpRequest.getRole().trim().toUpperCase().replace("ROLE_", "") : "STAFF";
         if (requestedRole.equals("ADMIN")) {
             throw new BadRequestException("Public registration cannot assign Admin privileges.");
         }
@@ -118,7 +142,8 @@ public class AuthService {
 
         if (requestedRole.equals("SUPPLIER")) {
             role = roleRepository.findByName("SUPPLIER")
-                    .orElseThrow(() -> new ResourceNotFoundException("Role SUPPLIER not found"));
+                    .or(() -> roleRepository.findByName("ROLE_SUPPLIER"))
+                    .orElseGet(() -> roleRepository.save(new Role(null, "SUPPLIER")));
             if (signUpRequest.getSupplierId() == null) {
                 throw new BadRequestException("Supplier account must be associated with a valid supplier ID.");
             }
@@ -126,16 +151,18 @@ public class AuthService {
                     .orElseThrow(() -> new ResourceNotFoundException("Supplier not found with ID: " + signUpRequest.getSupplierId()));
         } else if (requestedRole.equals("PHARMACIST")) {
             role = roleRepository.findByName("PHARMACIST")
-                    .orElseThrow(() -> new ResourceNotFoundException("Role PHARMACIST not found"));
+                    .or(() -> roleRepository.findByName("ROLE_PHARMACIST"))
+                    .orElseGet(() -> roleRepository.save(new Role(null, "PHARMACIST")));
         } else {
             role = roleRepository.findByName("STAFF")
-                    .orElseThrow(() -> new ResourceNotFoundException("Role STAFF not found"));
+                    .or(() -> roleRepository.findByName("ROLE_STAFF"))
+                    .orElseGet(() -> roleRepository.save(new Role(null, "STAFF")));
         }
 
         User user = User.builder()
-                .name(signUpRequest.getName())
+                .name(signUpRequest.getName().trim())
                 .username(username)
-                .email(signUpRequest.getEmail())
+                .email(email)
                 .password(encoder.encode(signUpRequest.getPassword()))
                 .role(role)
                 .supplier(supplier)
