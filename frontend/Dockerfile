@@ -1,8 +1,8 @@
 # Multi-stage Docker build for React application
-FROM node:18-alpine AS build
+FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm ci || npm install
 COPY . .
 RUN npm run build
 
