@@ -1,6 +1,6 @@
 # 🏥 MediStock: Medical Inventory Management Platform
 
-> A full-stack medical inventory and supply chain management platform designed for pharmacies, clinics, and healthcare institutions. Built with **Spring Boot 3 (Java 21)**, **React.js (Vite + Tailwind CSS)**, and **MySQL 8.0**.
+> A full-stack medical inventory and supply chain management platform designed for pharmacies, clinics, and healthcare institutions. Built with **Spring Boot 3 (Java 21)**, **React.js (Vite + Tailwind CSS)**, and **Neon PostgreSQL**, deployable on **Render**.
 
 ---
 
@@ -156,5 +156,5 @@ Open `http://localhost:5173` in your browser.
 - [Architecture & Roles](file:///Users/malthumkarvarun/infosys/docs/architecture.md)
 - [REST API Documentation](file:///Users/malthumkarvarun/infosys/docs/api-documentation.md)
 - [Local Setup Guide](file:///Users/malthumkarvarun/infosys/docs/setup-guide.md)
-- [Deployment Guide (Vercel & Java Cloud)](file:///Users/malthumkarvarun/infosys/docs/deployment-guide.md)
+- [Deployment Guide (Render & Neon PostgreSQL)](file:///Users/malthumkarvarun/infosys/docs/deployment-guide.md)
 - [Database Guide](file:///Users/malthumkarvarun/infosys/database/README.md)
