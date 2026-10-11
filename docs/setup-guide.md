@@ -17,6 +17,27 @@ Ensure you have the following installed on your workstation:
 
 ## 2. Database Setup
 
+### Option A: PostgreSQL Database (Recommended for Production & Cloud)
+1. Install or provision a PostgreSQL 14+ instance (local PostgreSQL, Supabase, Neon, or AWS RDS).
+2. Create the `medistock` database:
+```bash
+createdb medistock
+# Or via psql:
+psql -U postgres -c "CREATE DATABASE medistock;"
+```
+3. Apply the PostgreSQL schema and seed migrations:
+```bash
+psql -U postgres -d medistock -f database/postgres_schema.sql
+psql -U postgres -d medistock -f database/postgres_seed.sql
+```
+4. Set the PostgreSQL datasource environment variables for Spring Boot:
+```bash
+export SPRING_DATASOURCE_URL="jdbc:postgresql://localhost:5432/medistock"
+export SPRING_DATASOURCE_USERNAME="postgres"
+export SPRING_DATASOURCE_PASSWORD="your-postgres-password"
+```
+
+### Option B: Local MySQL (Development Fallback)
 1. Start your local MySQL service.
 2. Create the `medistock` database and apply the schema and seed scripts:
 ```bash
@@ -24,7 +45,6 @@ mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS medistock;"
 mysql -u root -p medistock < database/schema.sql
 mysql -u root -p medistock < database/seed.sql
 ```
-
 The seed script initializes sample medicines, suppliers, inventory rows, and the four default role accounts.
 
 ---
