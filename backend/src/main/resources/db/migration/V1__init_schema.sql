@@ -1,143 +1,158 @@
+-- =============================================================================
 -- MediStock: Medical Inventory Management Platform
+-- PostgreSQL Database Schema Migration
+-- Compatible with PostgreSQL 14+ / Supabase / Neon / AWS RDS PostgreSQL
+-- =============================================================================
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- 1. Roles Table
 CREATE TABLE IF NOT EXISTS roles (
     id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE,
-    description VARCHAR(255)
+    name VARCHAR(50) NOT NULL UNIQUE
 );
 
--- 2. Users Table
-CREATE TABLE IF NOT EXISTS users (
-    id BIGSERIAL PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    first_name VARCHAR(50) NOT NULL,
-    last_name VARCHAR(50) NOT NULL,
-    phone_number VARCHAR(20),
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- 3. User Roles Mapping Table
-CREATE TABLE IF NOT EXISTS user_roles (
-    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role_id BIGINT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    PRIMARY KEY (user_id, role_id)
-);
-
--- 4. Medicine Categories Table
-CREATE TABLE IF NOT EXISTS categories (
-    id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE,
-    description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- 5. Suppliers Table
+-- 2. Suppliers Table
 CREATE TABLE IF NOT EXISTS suppliers (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(150) NOT NULL,
-    contact_person VARCHAR(100),
-    contact_number VARCHAR(20) NOT NULL,
-    email VARCHAR(100),
-    address TEXT,
-    rating DECIMAL(2,1) DEFAULT 5.0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    contact_number VARCHAR(20) DEFAULT NULL,
+    email VARCHAR(150) DEFAULT NULL,
+    address VARCHAR(255) DEFAULT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 6. Medicines Table
+-- 3. Users Table (Includes supplier association and role association)
+CREATE TABLE IF NOT EXISTS users (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    username VARCHAR(50) UNIQUE,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role_id BIGINT NOT NULL,
+    supplier_id BIGINT DEFAULT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_users_role FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_users_supplier FOREIGN KEY (supplier_id) REFERENCES suppliers (id) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_role_id ON users(role_id);
+CREATE INDEX IF NOT EXISTS idx_users_supplier_id ON users(supplier_id);
+
+-- 4. Categories Table
+CREATE TABLE IF NOT EXISTS categories (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description VARCHAR(255) DEFAULT NULL
+);
+
+-- 5. Medicines Table
 CREATE TABLE IF NOT EXISTS medicines (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(150) NOT NULL,
-    generic_name VARCHAR(150),
-    sku VARCHAR(50) UNIQUE,
-    category_id BIGINT REFERENCES categories(id) ON DELETE SET NULL,
-    supplier_id BIGINT REFERENCES suppliers(id) ON DELETE SET NULL,
-    description TEXT,
-    dosage_form VARCHAR(50),
-    strength VARCHAR(50),
-    price DECIMAL(10, 2) NOT NULL,
-    reorder_level INT NOT NULL DEFAULT 10,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    batch_number VARCHAR(100) NOT NULL,
+    category_id BIGINT DEFAULT NULL,
+    supplier_id BIGINT DEFAULT NULL,
+    quantity INT DEFAULT 0,
+    manufacturing_date DATE DEFAULT NULL,
+    expiry_date DATE DEFAULT NULL,
+    price NUMERIC(10,2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_medicines_category FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_medicines_supplier FOREIGN KEY (supplier_id) REFERENCES suppliers (id) ON DELETE SET NULL ON UPDATE CASCADE
 );
 
--- 7. Medicine Batches Table
-CREATE TABLE IF NOT EXISTS medicine_batches (
+CREATE INDEX IF NOT EXISTS idx_medicines_category_id ON medicines(category_id);
+CREATE INDEX IF NOT EXISTS idx_medicines_supplier_id ON medicines(supplier_id);
+
+-- 6. Inventory Table
+CREATE TABLE IF NOT EXISTS inventory (
     id BIGSERIAL PRIMARY KEY,
-    medicine_id BIGINT NOT NULL REFERENCES medicines(id) ON DELETE CASCADE,
-    batch_number VARCHAR(50) NOT NULL UNIQUE,
+    medicine_id BIGINT NOT NULL UNIQUE,
     quantity INT NOT NULL DEFAULT 0,
-    manufacturing_date DATE NOT NULL,
-    expiry_date DATE NOT NULL,
-    purchase_price DECIMAL(10, 2),
-    selling_price DECIMAL(10, 2),
-    status VARCHAR(30) DEFAULT 'ACTIVE', -- ACTIVE, NEAR_EXPIRY, EXPIRED, DEPLETED
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    minimum_stock INT NOT NULL DEFAULT 10,
+    stock_status VARCHAR(30) NOT NULL DEFAULT 'AVAILABLE',
+    last_updated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_inventory_medicine FOREIGN KEY (medicine_id) REFERENCES medicines (id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- 8. Stock Movement Logs Table
+-- 7. Stock Logs Table
 CREATE TABLE IF NOT EXISTS stock_logs (
     id BIGSERIAL PRIMARY KEY,
-    medicine_id BIGINT NOT NULL REFERENCES medicines(id) ON DELETE CASCADE,
-    batch_id BIGINT REFERENCES medicine_batches(id) ON DELETE SET NULL,
-    quantity_changed INT NOT NULL,
-    movement_type VARCHAR(50) NOT NULL, -- PURCHASE, SALE, DISPOSAL, ADJUSTMENT, RETURN
-    reason VARCHAR(255),
-    performed_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    medicine_id BIGINT NOT NULL,
+    quantity INT NOT NULL,
+    operation VARCHAR(30) NOT NULL,
+    previous_quantity INT DEFAULT NULL,
+    new_quantity INT DEFAULT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_stock_logs_medicine FOREIGN KEY (medicine_id) REFERENCES medicines (id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- 9. Purchase Orders Table
+CREATE INDEX IF NOT EXISTS idx_stock_logs_medicine_id ON stock_logs(medicine_id);
+
+-- 8. Purchase Orders Table
 CREATE TABLE IF NOT EXISTS purchase_orders (
     id BIGSERIAL PRIMARY KEY,
-    order_number VARCHAR(50) NOT NULL UNIQUE,
-    supplier_id BIGINT NOT NULL REFERENCES suppliers(id) ON DELETE RESTRICT,
-    total_amount DECIMAL(12, 2) NOT NULL DEFAULT 0.0,
-    status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING, APPROVED, SHIPPED, RECEIVED, CANCELLED
-    created_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
-    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expected_delivery_date DATE,
-    received_date TIMESTAMP
+    supplier_id BIGINT NOT NULL,
+    order_date DATE NOT NULL,
+    total_amount NUMERIC(12,2) DEFAULT 0.00,
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_purchase_orders_supplier FOREIGN KEY (supplier_id) REFERENCES suppliers (id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
--- 10. Purchase Order Items Table
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_supplier_id ON purchase_orders(supplier_id);
+
+-- 9. Purchase Order Items Table
 CREATE TABLE IF NOT EXISTS purchase_order_items (
     id BIGSERIAL PRIMARY KEY,
-    order_id BIGINT NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
-    medicine_id BIGINT NOT NULL REFERENCES medicines(id) ON DELETE CASCADE,
+    purchase_order_id BIGINT NOT NULL,
+    medicine_id BIGINT NOT NULL,
     quantity INT NOT NULL,
-    unit_price DECIMAL(10, 2) NOT NULL,
-    total_price DECIMAL(12, 2) NOT NULL
+    unit_price NUMERIC(10,2) NOT NULL,
+    CONSTRAINT fk_purchase_items_order FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_purchase_items_medicine FOREIGN KEY (medicine_id) REFERENCES medicines (id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
--- 11. Expiry Tracking & Alerts Table
-CREATE TABLE IF NOT EXISTS expiry_alerts (
+CREATE INDEX IF NOT EXISTS idx_purchase_items_order_id ON purchase_order_items(purchase_order_id);
+CREATE INDEX IF NOT EXISTS idx_purchase_items_medicine_id ON purchase_order_items(medicine_id);
+
+-- 10. Expiry Tracking Table
+CREATE TABLE IF NOT EXISTS expiry_tracking (
     id BIGSERIAL PRIMARY KEY,
-    batch_id BIGINT NOT NULL REFERENCES medicine_batches(id) ON DELETE CASCADE,
-    alert_date DATE NOT NULL,
-    days_to_expiry INT NOT NULL,
-    is_resolved BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    medicine_id BIGINT NOT NULL,
+    expiry_date DATE NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'VALID',
+    notification_sent BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_expiry_medicine FOREIGN KEY (medicine_id) REFERENCES medicines (id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- 12. System Notifications Table
+CREATE INDEX IF NOT EXISTS idx_expiry_medicine_id ON expiry_tracking(medicine_id);
+
+-- 11. Notifications Table
 CREATE TABLE IF NOT EXISTS notifications (
     id BIGSERIAL PRIMARY KEY,
-    title VARCHAR(150) NOT NULL,
+    user_id BIGINT NOT NULL,
+    title VARCHAR(200) NOT NULL,
     message TEXT NOT NULL,
-    type VARCHAR(50) NOT NULL, -- LOW_STOCK, EXPIRY, ORDER_UPDATE, SYSTEM
-    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+    type VARCHAR(50) DEFAULT NULL,
     is_read BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- Default Role Seeds
-INSERT INTO roles (name, description) VALUES
-    ('ROLE_ADMIN', 'System Administrator with full access'),
-    ('ROLE_PHARMACIST', 'Pharmacist with inventory management and dispensing access'),
-    ('ROLE_STAFF', 'Staff with viewing and basic operations access')
-ON CONFLICT (name) DO NOTHING;
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+
+-- 12. Reports Table
+CREATE TABLE IF NOT EXISTS reports (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    report_type VARCHAR(50) NOT NULL,
+    generated_by BIGINT DEFAULT NULL,
+    file_path VARCHAR(255) DEFAULT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_reports_user FOREIGN KEY (generated_by) REFERENCES users (id) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_reports_user_id ON reports(generated_by);
