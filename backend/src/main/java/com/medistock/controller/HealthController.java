@@ -13,7 +13,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/health")
 @Tag(name = "Health", description = "Application and database health monitoring")
 public class HealthController {
 
@@ -23,7 +22,7 @@ public class HealthController {
         this.jdbcOperations = jdbcOperations;
     }
 
-    @GetMapping
+    @GetMapping({"/health", "/"})
     @Operation(summary = "Application Health Status")
     public ResponseEntity<Map<String, Object>> checkHealth() {
         Map<String, Object> response = new HashMap<>();
