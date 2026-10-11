@@ -27,15 +27,18 @@ Confirms application and MySQL database connectivity.
 ## 2. Authentication Endpoints
 
 ### `POST /api/auth/login`
-Authenticates a user and issues a JWT token.
+Authenticates a user against PostgreSQL and verifies that the user is assigned the selected role before issuing a signed JWT token.
 - **Authorization**: Public
 - **Request Body**:
 ```json
 {
   "username": "admin",
-  "password": "admin123"
+  "password": "user-entered-password",
+  "role": "ADMIN"
 }
 ```
+> **Role Field Requirements:** Must be one of `ADMIN`, `PHARMACIST`, `STAFF`, `SUPPLIER` (or prefixed with `ROLE_`). The role dropdown prevents role escalation; if the selected role does not match the user's role in the database, the login is rejected with HTTP 400.
+
 - **Response `200 OK`**:
 ```json
 {
@@ -54,6 +57,29 @@ Authenticates a user and issues a JWT token.
   }
 }
 ```
+- **Error Responses**:
+  - `400 Bad Request` (Role Mismatch):
+    ```json
+    {
+      "success": false,
+      "message": "The selected role does not match your account."
+    }
+    ```
+  - `400 Bad Request` (Missing Role):
+    ```json
+    {
+      "success": false,
+      "message": "Role selection is required."
+    }
+    ```
+  - `401 Unauthorized` (Invalid Credentials):
+    ```json
+    {
+      "success": false,
+      "message": "Invalid username/email or password"
+    }
+    ```
+
 
 ### `POST /api/auth/register`
 Public user registration. Note: `ADMIN` role is strictly disallowed through public registration.
