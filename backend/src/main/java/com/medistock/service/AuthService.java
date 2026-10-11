@@ -51,13 +51,32 @@ public class AuthService {
     }
 
     public JwtResponse authenticateUser(LoginRequest loginRequest) {
+        if (loginRequest.getRole() == null || loginRequest.getRole().trim().isEmpty()) {
+            throw new BadRequestException("Role selection is required.");
+        }
+
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
+
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+
+        String selectedRole = loginRequest.getRole().trim().toUpperCase().replace("ROLE_", "");
+        String actualUserRole = userDetails.getRoleName() != null
+                ? userDetails.getRoleName().trim().toUpperCase().replace("ROLE_", "")
+                : "";
+
+        boolean roleMatches = actualUserRole.equals(selectedRole) ||
+                userDetails.getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .anyMatch(auth -> auth.toUpperCase().replace("ROLE_", "").equals(selectedRole));
+
+        if (!roleMatches) {
+            throw new BadRequestException("The selected role does not match your account.");
+        }
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtTokenProvider.generateToken(authentication);
 
-        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         List<String> roles = userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList());
