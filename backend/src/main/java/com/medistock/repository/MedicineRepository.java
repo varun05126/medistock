@@ -1,3 +1,4 @@
+
 package com.medistock.repository;
 
 import com.medistock.entity.Medicine;
@@ -12,19 +13,36 @@ import java.util.Optional;
 
 @Repository
 public interface MedicineRepository extends JpaRepository<Medicine, Long> {
+
     Optional<Medicine> findByBatchNumber(String batchNumber);
+
     List<Medicine> findByNameContainingIgnoreCase(String name);
+
     List<Medicine> findByCategoryId(Long categoryId);
+
     List<Medicine> findBySupplierId(Long supplierId);
 
-    @Query("SELECT m FROM Medicine m WHERE " +
-           "(:search IS NULL OR LOWER(m.name) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(m.batchNumber) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
-           "(:categoryId IS NULL OR m.category.id = :categoryId) AND " +
-           "(:supplierId IS NULL OR m.supplier.id = :supplierId)")
-    List<Medicine> searchMedicines(@Param("search") String search,
-                                  @Param("categoryId") Long categoryId,
-                                  @Param("supplierId") Long supplierId);
+    @Query("""
+        SELECT m
+        FROM Medicine m
+        WHERE (
+            COALESCE(:search, '') = ''
+            OR LOWER(m.name) LIKE LOWER(CONCAT('%', COALESCE(:search, ''), '%'))
+            OR LOWER(m.batchNumber) LIKE LOWER(CONCAT('%', COALESCE(:search, ''), '%'))
+        )
+        AND (:categoryId IS NULL OR m.category.id = :categoryId)
+        AND (:supplierId IS NULL OR m.supplier.id = :supplierId)
+        """)
+    List<Medicine> searchMedicines(
+            @Param("search") String search,
+            @Param("categoryId") Long categoryId,
+            @Param("supplierId") Long supplierId
+    );
 
     List<Medicine> findByExpiryDateBefore(LocalDate date);
-    List<Medicine> findByExpiryDateBetween(LocalDate startDate, LocalDate endDate);
+
+    List<Medicine> findByExpiryDateBetween(
+            LocalDate startDate,
+            LocalDate endDate
+    );
 }
