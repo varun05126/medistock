@@ -1,0 +1,6 @@
+# Backend .dockerignore
+target
+.git
+.DS_Store
+*.log
+.mvn/wrapper/*.jar
