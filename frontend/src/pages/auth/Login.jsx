@@ -57,7 +57,9 @@ export default function Login() {
       }
     } catch (err) {
       // Diagnostic logging without exposing sensitive credentials or tokens
-      const currentApiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+      const currentApiBase =
+        import.meta.env.VITE_API_BASE_URL ||
+        (import.meta.env.PROD ? 'https://medistock-3fel.onrender.com/api' : 'http://localhost:8080/api');
       console.warn('[MediStock Auth Diagnostic]', {
         message: err?.message,
         code: err?.code,
@@ -78,7 +80,7 @@ export default function Login() {
 
         if (isHttps && isCallingHttp) {
           setError(
-            `Unable to connect: Deployed HTTPS frontend cannot call insecure HTTP API (${currentApiBase}). Please configure VITE_API_BASE_URL in Vercel to your deployed backend HTTPS URL.`
+            `Unable to connect: Deployed HTTPS frontend cannot call insecure HTTP API (${currentApiBase}). Please configure VITE_API_BASE_URL in Render to your deployed backend HTTPS URL (https://medistock-3fel.onrender.com/api).`
           );
         } else {
           setError(

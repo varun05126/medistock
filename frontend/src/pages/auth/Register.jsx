@@ -97,7 +97,9 @@ export default function Register() {
       }, 1200);
     } catch (err) {
       // Diagnostic logging without sensitive passwords
-      const currentApiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+      const currentApiBase =
+        import.meta.env.VITE_API_BASE_URL ||
+        (import.meta.env.PROD ? 'https://medistock-3fel.onrender.com/api' : 'http://localhost:8080/api');
       console.warn('[MediStock Register Diagnostic]', {
         message: err?.message,
         code: err?.code,

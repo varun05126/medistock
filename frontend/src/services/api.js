@@ -1,17 +1,23 @@
 import axios from 'axios';
 
 const getBaseUrl = () => {
-  let url = import.meta.env.VITE_API_BASE_URL;
-  if (!url || typeof url !== 'string') {
-    return 'http://localhost:8080/api';
-  }
-  url = url.trim();
-  while (url.endsWith('/')) {
-    url = url.slice(0, -1);
-  }
+  const productionUrl = 'https://medistock-3fel.onrender.com/api';
+  const developmentUrl = 'http://localhost:8080/api';
+
+  const configuredUrl = import.meta.env.VITE_API_BASE_URL;
+
+  // Never use localhost in production.
+  let url = import.meta.env.PROD
+    ? productionUrl
+    : (configuredUrl?.trim() || developmentUrl);
+
+  url = url.trim().replace(/\/+$/, '');
+
+  // Prevent duplicate /api suffixes.
   if (!url.endsWith('/api')) {
     url = `${url}/api`;
   }
+
   return url;
 };
 
@@ -20,15 +26,17 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000,
+  timeout: 20000,
 });
 
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -40,10 +48,12 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
     }
+
     return Promise.reject(error.response?.data || error);
   }
 );
