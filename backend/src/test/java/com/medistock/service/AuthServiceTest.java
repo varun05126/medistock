@@ -58,9 +58,9 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("Successful authentication returns JWT and user roles")
+    @DisplayName("Successful authentication with matching role returns JWT and user roles")
     void testAuthenticateUserSuccess() {
-        LoginRequest loginRequest = new LoginRequest("admin", "admin123");
+        LoginRequest loginRequest = new LoginRequest("admin", "admin123", "ADMIN");
         UserDetailsImpl userDetails = new UserDetailsImpl(
                 1L, "Varun Admin", "admin", "admin@medistock.com", "hashed", null, "ADMIN",
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN"))
@@ -80,9 +80,33 @@ class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("Authentication with mismatched role is rejected with clear error message")
+    void testAuthenticateUserRoleMismatch() {
+        LoginRequest loginRequest = new LoginRequest("admin", "admin123", "PHARMACIST");
+        UserDetailsImpl userDetails = new UserDetailsImpl(
+                1L, "Varun Admin", "admin", "admin@medistock.com", "hashed", null, "ADMIN",
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN"))
+        );
+        Authentication authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(authentication);
+
+        BadRequestException ex = assertThrows(BadRequestException.class, () -> authService.authenticateUser(loginRequest));
+        assertEquals("The selected role does not match your account.", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("Authentication without role is rejected")
+    void testAuthenticateUserMissingRole() {
+        LoginRequest loginRequest = new LoginRequest("admin", "admin123", null);
+        BadRequestException ex = assertThrows(BadRequestException.class, () -> authService.authenticateUser(loginRequest));
+        assertEquals("Role selection is required.", ex.getMessage());
+    }
+
+    @Test
     @DisplayName("Invalid credentials throws BadCredentialsException")
     void testAuthenticateUserInvalidCredentials() {
-        LoginRequest loginRequest = new LoginRequest("admin", "wrongpassword");
+        LoginRequest loginRequest = new LoginRequest("admin", "wrongpassword", "ADMIN");
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenThrow(new BadCredentialsException("Bad credentials"));
 
