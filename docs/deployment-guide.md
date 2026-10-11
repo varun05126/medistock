@@ -2,6 +2,11 @@
 
 This guide details instructions for deploying the **MediStock** React frontend to **Vercel** and the **Spring Boot backend & MySQL database** to a compatible Java hosting platform (e.g., Render, Railway, AWS, or Heroku).
 
+### 🚀 Live Verified Vercel Deployments
+- **Production URL**: [https://frontend-eight-liard-9pbaatdtk1.vercel.app](https://frontend-eight-liard-9pbaatdtk1.vercel.app)
+- **Deployment URL**: [https://frontend-pcrheekv2-varun05126s-projects.vercel.app](https://frontend-pcrheekv2-varun05126s-projects.vercel.app)
+- **Status**: Active (HTTP 200 OK, SPA rewrites verified)
+
 ---
 
 ## 1. Architecture Deployment Overview
